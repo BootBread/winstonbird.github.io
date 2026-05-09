@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Political Compass</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.8.0/dist/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f3;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #6b6b67;
+    --color-text-tertiary: #9b9b97;
+    --color-border-tertiary: rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.22);
+    --color-border-primary: rgba(0,0,0,0.35);
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1a1a18;
+      --color-background-secondary: #242422;
+      --color-text-primary: #f0ede8;
+      --color-text-secondary: #a0a09a;
+      --color-text-tertiary: #707068;
+      --color-border-tertiary: rgba(255,255,255,0.1);
+      --color-border-secondary: rgba(255,255,255,0.18);
+      --color-border-primary: rgba(255,255,255,0.28);
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .page { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 1.5rem; }
+  .compass-wrap { padding: 1rem 0; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+  .toolbar input[type="text"] { flex: 1; min-width: 120px; max-width: 200px; font-family: var(--font-sans); font-size: 14px; padding: 6px 10px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); outline: none; }
+  .toolbar input:focus { box-shadow: 0 0 0 2px rgba(55,138,221,0.3); }
+  button { font-family: var(--font-sans); font-size: 14px; padding: 6px 14px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  button:hover { background: var(--color-background-secondary); }
+  button:active { transform: scale(0.98); }
+  .compass-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
+  .compass-svg { width: 100%; aspect-ratio: 1; display: block; cursor: crosshair; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+  .pin { cursor: grab; user-select: none; }
+  .pin:active { cursor: grabbing; }
+  .pin-label { font-size: 11px; font-weight: 500; pointer-events: none; }
+  .axis-editors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 1rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .axis-group { display: flex; flex-direction: column; gap: 4px; }
+  .axis-group label { font-size: 12px; color: var(--color-text-secondary); }
+  .axis-group div { display: flex; gap: 4px; }
+  .axis-group input { flex: 1; font-size: 13px; font-family: var(--font-sans); padding: 5px 8px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); outline: none; }
+  .axis-group input:focus { box-shadow: 0 0 0 2px rgba(55,138,221,0.3); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 8px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); cursor: pointer; background: var(--color-background-primary); }
+  .legend-item:hover { background: var(--color-background-secondary); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .section-label { font-size: 11px; color: var(--color-text-secondary); margin: 0.75rem 0 0.25rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .delete-btn { background: none; border: none; cursor: pointer; padding: 0 4px; color: var(--color-text-secondary); font-size: 14px; }
+  .delete-btn:hover { color: var(--color-text-primary); }
+  @media (max-width: 480px) { .axis-editors { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Political Compass</h1>
+  <div class="compass-wrap">
+    <div class="toolbar">
+      <input type="text" id="pin-name" placeholder="Name or label..." maxlength="24" />
+      <button id="add-btn" onclick="addPin()"><i class="ti ti-plus" aria-hidden="true"></i> Add pin</button>
+      <button onclick="clearAll()" style="color: var(--color-text-secondary);">Clear all</button>
+    </div>
+
+    <div class="compass-container">
+      <svg id="compass" class="compass-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+        <defs><clipPath id="clip"><rect width="500" height="500"/></clipPath></defs>
+        <rect width="500" height="500" fill="var(--color-background-primary)"/>
+        <rect x="0" y="0" width="250" height="250" fill="#E6F1FB" opacity="0.45"/>
+        <rect x="250" y="0" width="250" height="250" fill="#FCEBEB" opacity="0.45"/>
+        <rect x="0" y="250" width="250" height="250" fill="#EAF3DE" opacity="0.45"/>
+        <rect x="250" y="250" width="250" height="250" fill="#FAEEDA" opacity="0.45"/>
+        <line x1="250" y1="0" x2="250" y2="500" stroke="var(--color-border-secondary)" stroke-width="1"/>
+        <line x1="0" y1="250" x2="500" y2="250" stroke="var(--color-border-secondary)" stroke-width="1"/>
+        <line x1="245" y1="6" x2="250" y2="0" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <line x1="255" y1="6" x2="250" y2="0" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <line x1="245" y1="494" x2="250" y2="500" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <line x1="255" y1="494" x2="250" y2="500" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <line x1="6" y1="245" x2="0" y2="250" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <line x1="6" y1="255" x2="0" y2="250" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <line x1="494" y1="245" x2="500" y2="250" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <line x1="494" y1="255" x2="500" y2="250" stroke="var(--color-border-primary)" stroke-width="1.5"/>
+        <text id="label-top" x="250" y="18" text-anchor="middle" font-size="13" font-weight="500" fill="var(--color-text-primary)" font-family="sans-serif">Authoritarian</text>
+        <text id="label-bottom" x="250" y="492" text-anchor="middle" font-size="13" font-weight="500" fill="var(--color-text-primary)" font-family="sans-serif">Libertarian</text>
+        <text id="label-left" x="10" y="253" text-anchor="start" font-size="13" font-weight="500" fill="var(--color-text-primary)" font-family="sans-serif" transform="rotate(-90, 10, 253)">Left</text>
+        <text id="label-right" x="490" y="253" text-anchor="end" font-size="13" font-weight="500" fill="var(--color-text-primary)" font-family="sans-serif" transform="rotate(90, 490, 253)">Right</text>
+        <text id="quad-tl" x="20" y="40" font-size="11" fill="#378ADD" opacity="0.7" font-family="sans-serif">Auth. Left</text>
+        <text id="quad-tr" x="480" y="40" text-anchor="end" font-size="11" fill="#E24B4A" opacity="0.7" font-family="sans-serif">Auth. Right</text>
+        <text id="quad-bl" x="20" y="490" font-size="11" fill="#639922" opacity="0.7" font-family="sans-serif">Lib. Left</text>
+        <text id="quad-br" x="480" y="490" text-anchor="end" font-size="11" fill="#BA7517" opacity="0.7" font-family="sans-serif">Lib. Right</text>
+        <g id="pins-layer" clip-path="url(#clip)"></g>
+      </svg>
+    </div>
+
+    <div class="section-label">Edit axis labels</div>
+    <div class="axis-editors">
+      <div class="axis-group">
+        <label>Vertical axis</label>
+        <div>
+          <input type="text" id="e-top" value="Authoritarian" oninput="updateAxisLabel('top',this.value)" placeholder="Top" />
+        </div>
+        <div>
+          <input type="text" id="e-bottom" value="Libertarian" oninput="updateAxisLabel('bottom',this.value)" placeholder="Bottom" />
+        </div>
+      </div>
+      <div class="axis-group">
+        <label>Horizontal axis</label>
+        <div>
+          <input type="text" id="e-left" value="Left" oninput="updateAxisLabel('left',this.value)" placeholder="Left" />
+        </div>
+        <div>
+          <input type="text" id="e-right" value="Right" oninput="updateAxisLabel('right',this.value)" placeholder="Right" />
+        </div>
+      </div>
+      <div class="axis-group">
+        <label>Quadrant labels (top-left, top-right)</label>
+        <div>
+          <input type="text" id="e-qtl" value="Auth. Left" oninput="updateQuadLabel('tl',this.value)" />
+          <input type="text" id="e-qtr" value="Auth. Right" oninput="updateQuadLabel('tr',this.value)" />
+        </div>
+      </div>
+      <div class="axis-group">
+        <label>Quadrant labels (bottom-left, bottom-right)</label>
+        <div>
+          <input type="text" id="e-qbl" value="Lib. Left" oninput="updateQuadLabel('bl',this.value)" />
+          <input type="text" id="e-qbr" value="Lib. Right" oninput="updateQuadLabel('br',this.value)" />
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Pins <span id="pin-count" style="color:var(--color-text-tertiary)"></span></div>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#378ADD','#E24B4A','#1D9E75','#BA7517','#533AB7','#D4537E','#3B6D11','#D85A30','#0F6E56','#993C1D'];
+let pins = [], nextId = 0, dragPin = null, dragOffX = 0, dragOffY = 0;
+const svg = document.getElementById('compass');
+
+function svgCoords(e) {
+  const rect = svg.getBoundingClientRect();
+  const scaleX = 500 / rect.width, scaleY = 500 / rect.height;
+  const cx = e.clientX || (e.touches && e.touches[0].clientX);
+  const cy = e.clientY || (e.touches && e.touches[0].clientY);
+  return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+}
+
+function getColor(idx) { return COLORS[idx % COLORS.length]; }
+
+function addPin() {
+  const name = document.getElementById('pin-name').value.trim() || 'Pin ' + (nextId+1);
+  const id = nextId++;
+  pins.push({ id, name, x: 120 + Math.random()*260, y: 120 + Math.random()*260, color: getColor(id) });
+  document.getElementById('pin-name').value = '';
+  renderPins();
+}
+
+function removePin(id) { pins = pins.filter(p => p.id !== id); renderPins(); }
+function clearAll() { pins = []; renderPins(); }
+
+function renderPins() {
+  const layer = document.getElementById('pins-layer');
+  layer.innerHTML = '';
+  pins.forEach(p => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','pin');
+    g.setAttribute('data-id', p.id);
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y);
+    circle.setAttribute('r', '8'); circle.setAttribute('fill', p.color);
+    circle.setAttribute('stroke', 'var(--color-background-primary)'); circle.setAttribute('stroke-width', '2');
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', p.x + 11); text.setAttribute('y', p.y + 4);
+    text.setAttribute('font-size','11'); text.setAttribute('font-weight','500');
+    text.setAttribute('fill', p.color); text.setAttribute('font-family','sans-serif');
+    text.setAttribute('paint-order','stroke'); text.setAttribute('stroke','var(--color-background-primary)');
+    text.setAttribute('stroke-width','3'); text.textContent = p.name;
+    g.appendChild(circle); g.appendChild(text);
+    g.addEventListener('mousedown', e => startDrag(e, p.id));
+    g.addEventListener('touchstart', e => startDrag(e, p.id), {passive:false});
+    layer.appendChild(g);
+  });
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  pins.forEach(p => {
+    const item = document.createElement('div'); item.className = 'legend-item';
+    const dot = document.createElement('div'); dot.className = 'legend-dot'; dot.style.background = p.color;
+    const nameEl = document.createElement('span'); nameEl.style.color = 'var(--color-text-primary)'; nameEl.textContent = p.name;
+    const xVal = Math.round((p.x - 250) / 2.5), yVal = Math.round((250 - p.y) / 2.5);
+    const coords = document.createElement('span');
+    coords.style.cssText = 'color:var(--color-text-tertiary);font-size:11px';
+    coords.textContent = ` (${xVal > 0 ? '+' : ''}${xVal}, ${yVal > 0 ? '+' : ''}${yVal})`;
+    const del = document.createElement('button'); del.className = 'delete-btn';
+    del.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
+    del.onclick = () => removePin(p.id); del.setAttribute('aria-label','Remove ' + p.name);
+    item.append(dot, nameEl, coords, del); legend.appendChild(item);
+  });
+  document.getElementById('pin-count').textContent = pins.length > 0 ? `(${pins.length})` : '';
+}
+
+function startDrag(e, id) {
+  e.preventDefault(); dragPin = id;
+  const coords = svgCoords(e); const pin = pins.find(p => p.id === id);
+  dragOffX = coords.x - pin.x; dragOffY = coords.y - pin.y;
+}
+
+svg.addEventListener('mousemove', e => {
+  if (dragPin === null) return;
+  const coords = svgCoords(e); const pin = pins.find(p => p.id === dragPin);
+  if (!pin) return;
+  pin.x = Math.max(8, Math.min(492, coords.x - dragOffX));
+  pin.y = Math.max(8, Math.min(492, coords.y - dragOffY));
+  renderPins();
+});
+
+svg.addEventListener('touchmove', e => {
+  if (dragPin === null) return; e.preventDefault();
+  const coords = svgCoords(e); const pin = pins.find(p => p.id === dragPin);
+  if (!pin) return;
+  pin.x = Math.max(8, Math.min(492, coords.x - dragOffX));
+  pin.y = Math.max(8, Math.min(492, coords.y - dragOffY));
+  renderPins();
+}, {passive:false});
+
+document.addEventListener('mouseup', () => { dragPin = null; });
+document.addEventListener('touchend', () => { dragPin = null; });
+
+svg.addEventListener('click', e => {
+  if (dragPin !== null) return;
+  if (e.target.closest('.pin')) return;
+  const coords = svgCoords(e);
+  const name = document.getElementById('pin-name').value.trim() || 'Pin ' + (nextId+1);
+  const id = nextId++;
+  pins.push({ id, name, x: coords.x, y: coords.y, color: getColor(id) });
+  document.getElementById('pin-name').value = '';
+  renderPins();
+});
+
+document.getElementById('pin-name').addEventListener('keydown', e => { if (e.key === 'Enter') addPin(); });
+function updateAxisLabel(pos, val) { const el = document.getElementById('label-' + pos); if (el) el.textContent = val; }
+function updateQuadLabel(pos, val) { const el = document.getElementById('quad-' + pos); if (el) el.textContent = val; }
+
+[{name:'Marx',x:90,y:160},{name:'Gandhi',x:140,y:390},{name:'Thatcher',x:370,y:160},{name:'Rand',x:400,y:380}].forEach(p => {
+  const id = nextId++;
+  pins.push({id, name: p.name, x: p.x, y: p.y, color: getColor(id)});
+});
+renderPins();
+</script>
+</body>
+</html>
